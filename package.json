@@ -1,0 +1,29 @@
+{
+  "name": "prettytrace",
+  "version": "1.0.0",
+  "description": "A lightweight and customizable logging utility for Node.js",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "logger",
+    "logging",
+    "debugging",
+    "console",
+    "nodejs",
+    "developer-tools"
+  ],
+  "author": "Suhani Singh",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
