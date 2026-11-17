@@ -1,5 +1,6 @@
 import { createConfig, shouldLog } from './config.js';
 import { formatLog } from './formatter.js';
+import { redactSensitiveData } from './redact.js';
 
 /**
  * Mapping from logger method names to the severity level used for threshold filtering.
@@ -33,11 +34,18 @@ export function createLogger(options = {}) {
   function log(method, consoleFn, args) {
     const filterLevel = METHOD_SEVERITY[method] || method;
 
+    // 1. Severity threshold check
     if (!shouldLog(config.level, filterLevel)) {
       return;
     }
 
-    const formatted = formatLog(method, args, config);
+    // 2. Sensitive data redaction
+    const processedArgs = config.redact && config.redact.enabled !== false
+      ? args.map((arg) => redactSensitiveData(arg, config.redact))
+      : args;
+
+    // 3. Format and output
+    const formatted = formatLog(method, processedArgs, config);
     consoleFn(formatted);
   }
 

@@ -248,4 +248,173 @@ describe('PrettyTrace Core Logger', () => {
     assert.equal(logger.warn('msg'), undefined);
     assert.equal(logger.error('msg'), undefined);
   });
+
+  describe('Redaction Integration in Logger', () => {
+    it('14. logger.info() redacts sensitive fields from output', () => {
+      const logger = createLogger({ timestamps: false, colors: false });
+      logger.info('User info:', { password: 'secretPassword123', name: 'Alice' });
+
+      const output = captured.info[0][0];
+      assert.equal(output.includes('secretPassword123'), false);
+      assert.match(output, /"password":\s*"\[REDACTED\]"/);
+      assert.match(output, /"name":\s*"Alice"/);
+    });
+
+    it('15. logger.error() redacts sensitive fields from output', () => {
+      const logger = createLogger({ timestamps: false, colors: false });
+      logger.error('DB Error:', { apiKey: 'key_live_98234', query: 'SELECT 1' });
+
+      const output = captured.error[0][0];
+      assert.equal(output.includes('key_live_98234'), false);
+      assert.match(output, /"apiKey":\s*"\[REDACTED\]"/);
+      assert.match(output, /"query":\s*"SELECT 1"/);
+    });
+
+    it('16. logger.debug() redacts sensitive fields from output', () => {
+      const logger = createLogger({ level: 'debug', timestamps: false, colors: false });
+      logger.debug('Debug payload:', { token: 'jwt_secret_token' });
+
+      const output = captured.debug[0][0];
+      assert.equal(output.includes('jwt_secret_token'), false);
+      assert.match(output, /"token":\s*"\[REDACTED\]"/);
+    });
+
+    it('17. logger.warn() redacts sensitive fields from output', () => {
+      const logger = createLogger({ timestamps: false, colors: false });
+      logger.warn('Security warning:', { secret: 'topSecretPhrase' });
+
+      const output = captured.warn[0][0];
+      assert.equal(output.includes('topSecretPhrase'), false);
+      assert.match(output, /"secret":\s*"\[REDACTED\]"/);
+    });
+
+    it('18. logger.success() redacts sensitive fields from output', () => {
+      const logger = createLogger({ timestamps: false, colors: false });
+      logger.success('Auth success:', { authorization: 'Bearer secretAuthToken' });
+
+      const output = captured.log[0][0];
+      assert.equal(output.includes('secretAuthToken'), false);
+      assert.match(output, /"authorization":\s*"\[REDACTED\]"/);
+    });
+
+    it('19. Redaction works when an object is the only argument', () => {
+      const logger = createLogger({ timestamps: false, colors: false });
+      logger.info({ password: 'lonePassword', service: 'auth' });
+
+      const output = captured.info[0][0];
+      assert.equal(output.includes('lonePassword'), false);
+      assert.match(output, /"password":\s*"\[REDACTED\]"/);
+      assert.match(output, /"service":\s*"auth"/);
+    });
+
+    it('20. Redaction works when an object is passed alongside strings and numbers', () => {
+      const logger = createLogger({ timestamps: false, colors: false });
+      logger.info('Status:', 200, { token: 'myToken' }, 'finished');
+
+      const output = captured.info[0][0];
+      assert.equal(output.includes('myToken'), false);
+      assert.match(output, /Status: 200/);
+      assert.match(output, /"token":\s*"\[REDACTED\]"/);
+      assert.match(output, /finished$/);
+    });
+
+    it('21. Redaction works with multiple objects in one logging call', () => {
+      const logger = createLogger({ timestamps: false, colors: false });
+      logger.info(
+        { user: 'u1', password: 'p1' },
+        { user: 'u2', apiKey: 'k2' }
+      );
+
+      const output = captured.info[0][0];
+      assert.equal(output.includes('p1'), false);
+      assert.equal(output.includes('k2'), false);
+      assert.match(output, /"password":\s*"\[REDACTED\]"/);
+      assert.match(output, /"apiKey":\s*"\[REDACTED\]"/);
+    });
+
+    it('22. Custom redaction fields and custom replacement are honored', () => {
+      const logger = createLogger({
+        timestamps: false,
+        colors: false,
+        redact: {
+          enabled: true,
+          fields: ['creditCard', 'pin'],
+          replacement: '<CONFIDENTIAL>'
+        }
+      });
+
+      logger.info({ creditCard: '1234-5678-9012', pin: 9999, nonSensitive: 'ok' });
+
+      const output = captured.info[0][0];
+      assert.equal(output.includes('1234-5678-9012'), false);
+      assert.equal(output.includes('9999'), false);
+      assert.match(output, /"creditCard":\s*"<CONFIDENTIAL>"/);
+      assert.match(output, /"pin":\s*"<CONFIDENTIAL>"/);
+      assert.match(output, /"nonSensitive":\s*"ok"/);
+    });
+
+    it('23. Disabled redaction preserves original values in output', () => {
+      const logger = createLogger({
+        timestamps: false,
+        colors: false,
+        redact: {
+          enabled: false
+        }
+      });
+
+      logger.info({ password: 'unredactedPassword' });
+
+      const output = captured.info[0][0];
+      assert.equal(output.includes('unredactedPassword'), true);
+      assert.match(output, /"password":\s*"unredactedPassword"/);
+    });
+
+    it('24. Filtered-out messages do not leak to output or execute unnecessary formatting', () => {
+      const logger = createLogger({ level: 'error' });
+      logger.debug({ password: 'debugPassword' });
+      logger.info({ password: 'infoPassword' });
+
+      assert.equal(captured.debug.length, 0);
+      assert.equal(captured.info.length, 0);
+    });
+
+    it('25. Original logged objects are never mutated by the logger', () => {
+      const logger = createLogger();
+      const originalObj = {
+        user: 'alice',
+        password: 'rawPassword',
+        nested: { token: 'rawToken' }
+      };
+
+      const snapshot = JSON.stringify(originalObj);
+      logger.info('Logging obj:', originalObj);
+
+      assert.equal(JSON.stringify(originalObj), snapshot);
+      assert.equal(originalObj.password, 'rawPassword');
+      assert.equal(originalObj.nested.token, 'rawToken');
+    });
+
+    it('26. Critical security assertion: captured output never contains cleartext sensitive values', () => {
+      const sensitivePassword = 'SUPER_SECRET_VALUE_999!';
+      const sensitiveApiKey = 'API_KEY_LIVE_123456789!';
+      const sensitiveToken = 'JWT_SECRET_BEARER_9999!';
+
+      const logger = createLogger();
+
+      logger.info('Log entry', {
+        credentials: {
+          password: sensitivePassword,
+          nested: {
+            apiKey: sensitiveApiKey,
+            list: [{ token: sensitiveToken }]
+          }
+        }
+      });
+
+      const output = captured.info[0][0];
+      assert.equal(output.includes(sensitivePassword), false, 'Password must not appear in output');
+      assert.equal(output.includes(sensitiveApiKey), false, 'API key must not appear in output');
+      assert.equal(output.includes(sensitiveToken), false, 'Token must not appear in output');
+    });
+  });
 });
