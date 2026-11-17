@@ -25,8 +25,6 @@ PrettyTrace is designed for Node.js applications that need clean, readable termi
 npm install prettytrace
 ```
 
-> **Note**: PrettyTrace is currently in release-candidate preparation for version 1.0.0 and will be published to the npm registry upon completion of release audits.
-
 ---
 
 ## Basic Usage

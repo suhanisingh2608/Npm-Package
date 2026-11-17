@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-17
+
 ### Added
 - **Core Logging API**: `createLogger(options)` with five standard methods (`debug()`, `info()`, `success()`, `warn()`, `error()`).
 - **Severity-Level Filtering**: Threshold filtering based on numerical severity weights (`debug: 10`, `info: 20`, `warn: 30`, `error: 40`), with `success` adopting `info` filtering severity.
@@ -16,3 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Child Loggers**: Hierarchical child loggers via `logger.child(context)` with persistent contextual metadata, deep inheritance, and context override precedence.
 - **Safe Serialization Utilities**: Circular reference handling via `[Circular]`, `BigInt` serialization, Error stack preservation, and non-mutating deep cloning.
 - **ES Module Architecture**: Native Node.js 18+ ESM package exports with zero external runtime dependencies.
+
+### Security
+- Automated redaction of sensitive credentials, tokens, secrets, API keys, and authorization headers across all log arguments and child context.
+- Circular-reference and cycle-safe object traversal preventing call stack overflows and denial-of-service vulnerabilities.
