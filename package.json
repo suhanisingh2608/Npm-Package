@@ -1,7 +1,7 @@
 {
   "name": "prettytrace",
   "version": "1.0.0",
-  "description": "A lightweight and customizable logging utility for Node.js",
+  "description": "A lightweight, customizable, dependency-free logging utility for Node.js",
   "type": "module",
   "main": "./src/index.js",
   "exports": {
@@ -18,6 +18,8 @@
     "logging",
     "debugging",
     "console",
+    "structured-logging",
+    "redaction",
     "nodejs",
     "developer-tools"
   ],
@@ -25,5 +27,13 @@
   "license": "MIT",
   "engines": {
     "node": ">=18"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/suhanisingh2608/Npm-Package.git"
+  },
+  "bugs": {
+    "url": "https://github.com/suhanisingh2608/Npm-Package/issues"
+  },
+  "homepage": "https://github.com/suhanisingh2608/Npm-Package#readme"
 }
