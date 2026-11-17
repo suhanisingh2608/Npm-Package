@@ -1,23 +1,32 @@
 {
-  "name": "prettytrace",
+  "name": "@suhanyyysm/pretty",
   "version": "1.0.0",
   "description": "A lightweight, customizable, dependency-free logging utility for Node.js",
   "type": "module",
   "main": "./src/index.js",
+  "bin": {
+    "pretty": "./bin/pretty.js"
+  },
   "exports": {
     ".": "./src/index.js"
   },
   "files": [
-    "src"
+    "src",
+    "bin"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "test": "node --test"
   },
   "keywords": [
+    "pretty",
     "logger",
     "logging",
     "debugging",
     "console",
+    "cli",
     "structured-logging",
     "redaction",
     "nodejs",

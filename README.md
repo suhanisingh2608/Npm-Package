@@ -1,14 +1,20 @@
-# PrettyTrace
+# @suhanyyysm/pretty
 
-A lightweight, customizable, dependency-free logging utility for Node.js.
+A lightweight, customizable, dependency-free logging utility and CLI for Node.js.
+
+[![npm version](https://img.shields.io/npm/v/@suhanyyysm/pretty.svg)](https://www.npmjs.com/package/@suhanyyysm/pretty)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Overview
 
-PrettyTrace is designed for Node.js applications that need clean, readable terminal logs, robust structured metadata, automated sensitive-data redaction, and child loggers with persistent context—all with **zero external dependencies** and native ES module support.
+**@suhanyyysm/pretty** is designed for Node.js applications and command-line workflows that need clean, readable terminal logs, robust structured metadata, automated sensitive-data redaction, and child loggers with persistent context—all with **zero external dependencies** and native ES module support.
+
+It includes both a programmatic logging library and the **`pretty`** CLI executable.
 
 ## Key Features
 
 - **5 Standard Log Levels**: `debug`, `info`, `success`, `warn`, and `error`.
+- **CLI Executable (`pretty`)**: Format messages, inspect JSON, or pipe stream logs directly in the terminal.
 - **Numerical Severity Filtering**: Easily set log level thresholds; filtered messages bypass formatting and console output entirely.
 - **Terminal Colors**: High-contrast ANSI styling with automatic environment detection (`FORCE_COLOR`, `NO_COLOR`, TTY).
 - **Readable Timestamps**: Formatted 24-hour timestamps (`YYYY-MM-DD HH:mm:ss`), toggleable per logger instance.
@@ -21,16 +27,74 @@ PrettyTrace is designed for Node.js applications that need clean, readable termi
 
 ## Installation
 
+### As a project dependency:
+
 ```bash
-npm install prettytrace
+npm install @suhanyyysm/pretty
+```
+
+### Globally for the `pretty` CLI:
+
+```bash
+npm install -g @suhanyyysm/pretty
 ```
 
 ---
 
-## Basic Usage
+## CLI Usage (`pretty`)
+
+Pretty provides the `pretty` command-line tool for formatting terminal messages, structured JSON logs, and piped streams.
+
+```bash
+pretty [options] [message...]
+```
+
+### Options
+
+| Flag | Description | Default |
+| :--- | :--- | :--- |
+| `-m, --method <method>` | Logging method to use (`debug`, `info`, `success`, `warn`, `error`) | `info` |
+| `-l, --level <level>` | Minimum log level threshold (`debug`, `info`, `warn`, `error`) | `info` |
+| `--no-colors` | Disable ANSI terminal color codes | `false` |
+| `--no-timestamps` | Disable timestamp prefix | `false` |
+| `-j, --json` | Parse message arguments as JSON objects | `false` |
+| `-c, --context <json>` | Attach persistent contextual metadata as JSON | `null` |
+| `-v, --version` | Output CLI version | — |
+| `-h, --help` | Display help and usage information | — |
+
+### CLI Examples
+
+```bash
+# Basic log
+pretty "Server started on port 3000"
+
+# Specific severity methods
+pretty -m success "Build completed successfully"
+pretty -m warn "Memory consumption threshold reached (82%)"
+pretty -m error "Database connection failed"
+
+# Debug logging with custom threshold
+pretty -l debug -m debug "Connection pool initialized"
+
+# Structured JSON logging
+pretty -j '{"user":"alice","token":"secret123"}'
+# (Notice: "token" is automatically redacted!)
+
+# Contextual metadata
+pretty -c '{"service":"api-gateway","env":"production"}' "Incoming request"
+
+# Pipe logs from stdin
+echo '{"status":"ok","latency":42}' | pretty --json
+```
+
+---
+
+## Programmatic Usage
+
+### Basic Example
 
 ```js
-import { createLogger } from 'prettytrace';
+import { createLogger } from '@suhanyyysm/pretty';
 
 const logger = createLogger();
 
@@ -53,102 +117,88 @@ Output:
 
 ## Configuration Options
 
-Configure behavior by passing an options object to `createLogger(options)`:
+Configure loggers by passing options to `createLogger(options)`:
+
+```js
+import { createLogger } from '@suhanyyysm/pretty';
+
+const logger = createLogger({
+  level: 'debug',             // 'debug' | 'info' | 'warn' | 'error' (default: 'info')
+  colors: true,               // boolean (default: auto-detected from terminal/environment)
+  timestamps: true,           // boolean (default: true)
+  timestampFormat: '24h',     // '24h' (default: '24h')
+  redact: {
+    enabled: true,            // boolean (default: true)
+    fields: ['password', 'token', 'secret', 'authorization', 'apiKey'], // array of strings
+    replacement: '[REDACTED]' // string (default: '[REDACTED]')
+  }
+});
+```
+
+### Log Levels & Filtering
+
+Pretty uses numerical severity weighting:
+
+| Level | Severity Weight | Visible When Configured Level Is |
+| :--- | :---: | :--- |
+| **`debug`** | 10 | `debug` |
+| **`info`** *(default)* | 20 | `debug`, `info` |
+| **`warn`** | 30 | `debug`, `info`, `warn` |
+| **`error`** | 40 | `debug`, `info`, `warn`, `error` |
+
+*Note: `logger.success()` shares the `info` level severity weight (20) and outputs via `console.log`.*
+
+---
+
+## Structured Object Logging & Multi-Arguments
+
+Accepts multiple arguments of any JavaScript type, including objects, arrays, Error stacks, numbers, booleans, and BigInt:
+
+```js
+logger.info('User action', {
+  userId: 'usr_102',
+  roles: ['admin', 'billing'],
+  timestamp: new Date()
+});
+```
+
+---
+
+## Automated Sensitive-Data Redaction
+
+Automatically traverses nested objects, arrays, Maps, Sets, and Errors to mask sensitive properties before formatting or printing:
 
 ```js
 const logger = createLogger({
-  level: 'debug',              // Threshold: 'debug' | 'info' | 'warn' | 'error' (default: 'info')
-  colors: true,                // Enable/disable ANSI terminal colors (default: true)
-  timestamps: true,            // Include timestamps in output (default: true)
-  timestampFormat: '24h',      // Timestamp format (default: '24h')
   redact: {
-    enabled: true,             // Enable/disable redaction (default: true)
-    fields: [                  // Array of sensitive field names (case-insensitive exact match)
-      'password',
-      'token',
-      'secret',
-      'authorization',
-      'apiKey'
-    ],
-    replacement: '[REDACTED]'  // Replacement string (default: '[REDACTED]')
+    fields: ['password', 'token', 'secret', 'authorization', 'apiKey'],
+    replacement: '[REDACTED]'
   }
 });
-```
 
-### Log Levels & Severity Thresholds
-
-Severity order is defined as follows:
-
-| Level | Severity Weight | Visible Output |
-|---|---|---|
-| `debug` | 10 | `debug`, `info`, `success`, `warn`, `error` |
-| `info` (default) | 20 | `info`, `success`, `warn`, `error` |
-| `warn` | 30 | `warn`, `error` |
-| `error` | 40 | `error` |
-
-*Note: `success()` uses `info` severity (20) for threshold filtering.*
-
----
-
-## Structured Object Logging
-
-PrettyTrace accepts multiple arguments of any JavaScript type, including objects, arrays, Error stacks, numbers, booleans, and BigInt:
-
-```js
-logger.info('User session event', {
-  userId: 'usr_42',
-  authenticated: true,
-  roles: ['developer', 'admin']
-});
-```
-
-Output:
-```text
-2026-11-17 18:00:00 [INFO] User session event {
-  "userId": "usr_42",
-  "authenticated": true,
-  "roles": [
-    "developer",
-    "admin"
-  ]
-}
-```
-
----
-
-## Sensitive-Data Redaction
-
-PrettyTrace automatically traverses nested objects, arrays, Maps, Sets, and Errors to mask sensitive properties before formatting or printing:
-
-```js
-logger.info('Authentication payload', {
+logger.info('User login payload', {
   username: 'alice',
-  password: 'mySuperSecretPassword',
+  password: 'superSecretPassword123',
   metadata: {
-    apiKey: 'live_key_98234710',
-    publicId: 'pub_99'
+    apiKey: 'sk_live_987234981723'
   }
 });
 ```
 
 Output:
 ```text
-2026-11-17 18:00:00 [INFO] Authentication payload {
+2026-11-17 18:00:00 [INFO] User login payload {
   "username": "alice",
   "password": "[REDACTED]",
   "metadata": {
-    "apiKey": "[REDACTED]",
-    "publicId": "pub_99"
+    "apiKey": "[REDACTED]"
   }
 }
 ```
 
-- **Case-Insensitive Exact Matching**: `password`, `Password`, `PASSWORD`, `apiKey`, and `APIKEY` are all redacted. Substrings (such as `monkey` or `keyring`) are not matched.
-- **Custom Fields & Replacements**: Configure custom sensitive keys (e.g. `['creditCard', 'ssn']`) and custom replacement markers (e.g. `'***HIDDEN***'`).
-
 ---
 
-## Child Loggers & Contextual Metadata
+## Child Loggers and Contextual Logging
 
 Child loggers allow request-scoped or service-scoped loggers to attach persistent contextual metadata to all log entries.
 
